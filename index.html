@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Academic Portal</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-container">
+                <div class="header-left">
+                    <i class="fas fa-graduation-cap header-icon"></i>
+                    <h1 class="header-title">Student Academic Portal</h1>
+                </div>
+                <p class="header-subtitle">Track your academic progress & find scholarships</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="tabs">
+                <div class="tab-list">
+                    <button class="tab-button active" data-tab="grade-converter">
+                        <i class="fas fa-calculator"></i>
+                        Grade Converter
+                    </button>
+                    <button class="tab-button" data-tab="cgpa-calculator">
+                        <i class="fas fa-graduation-cap"></i>
+                        CGPA Calculator
+                    </button>
+                    <button class="tab-button" data-tab="scholarships">
+                        <i class="fas fa-award"></i>
+                        Scholarships
+                    </button>
+                </div>
+
+                <!-- Grade Converter Tab -->
+                <div class="tab-content active" id="grade-converter">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Marks to Grade Converter</h2>
+                            <p class="card-description">Convert your marks to letter grades and grade points</p>
+                        </div>
+                        <div class="card-content">
+                            <div class="converter-grid">
+                                <div class="input-section">
+                                    <label for="single-marks">Enter your marks (0-100)</label>
+                                    <input type="number" id="single-marks" min="0" max="100" value="0" placeholder="Enter marks">
+                                </div>
+                                <div class="result-section">
+                                    <div class="result-card">
+                                        <div class="result-row">
+                                            <span>Grade:</span>
+                                            <span class="grade-badge" id="single-grade">F</span>
+                                        </div>
+                                        <div class="result-row">
+                                            <span>Grade Points:</span>
+                                            <span class="grade-points" id="single-points">0.0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="separator"></div>
+
+                            <div class="grading-scale">
+                                <h3>Grading Scale</h3>
+                                <div class="scale-grid">
+                                    <div class="scale-item">
+                                        <span>90-100</span>
+                                        <span class="grade-badge">O</span>
+                                        <span>10.0</span>
+                                    </div>
+                                    <div class="scale-item">
+                                        <span>80-89</span>
+                                        <span class="grade-badge">E</span>
+                                        <span>9.0</span>
+                                    </div>
+                                    <div class="scale-item">
+                                        <span>70-79</span>
+                                        <span class="grade-badge">A</span>
+                                        <span>8.0</span>
+                                    </div>
+                                    <div class="scale-item">
+                                        <span>60-69</span>
+                                        <span class="grade-badge">B</span>
+                                        <span>7.0</span>
+                                    </div>
+                                    <div class="scale-item">
+                                        <span>50-59</span>
+                                        <span class="grade-badge">C</span>
+                                        <span>6.0</span>
+                                    </div>
+                                    <div class="scale-item">
+                                        <span>40-49</span>
+                                        <span class="grade-badge">D</span>
+                                        <span>5.0</span>
+                                    </div>
+                                    <div class="scale-item">
+                                        <span>0-39</span>
+                                        <span class="grade-badge">F</span>
+                                        <span>0.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CGPA Calculator Tab -->
+                <div class="tab-content" id="cgpa-calculator">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">CGPA Calculator</h2>
+                            <p class="card-description">Calculate your Cumulative Grade Point Average</p>
+                        </div>
+                        <div class="card-content">
+                            <div id="subjects-container">
+                                <!-- Subjects will be dynamically added here -->
+                            </div>
+
+                            <div class="button-group">
+                                <button class="btn btn-outline" id="add-subject">
+                                    <i class="fas fa-plus"></i>
+                                    Add Subject
+                                </button>
+                                <button class="btn btn-primary" id="calculate-cgpa">Calculate CGPA</button>
+                            </div>
+
+                            <div class="cgpa-result" id="cgpa-result" style="display: none;">
+                                <div class="cgpa-display">
+                                    <h3>Your CGPA</h3>
+                                    <div class="cgpa-value" id="cgpa-value">0.0</div>
+                                    <p class="cgpa-message" id="cgpa-message">Keep working hard!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scholarships Tab -->
+                <div class="tab-content" id="scholarships">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Scholarship Recommendations</h2>
+                            <p class="card-description" id="scholarship-description">
+                                Calculate your CGPA first to see personalized scholarship recommendations
+                            </p>
+                        </div>
+                        <div class="card-content">
+                            <div id="scholarships-container">
+                                <div class="empty-state">
+                                    <i class="fas fa-calculator empty-icon"></i>
+                                    <h3>Calculate your CGPA first</h3>
+                                    <p>Go to the CGPA Calculator tab to calculate your CGPA and get personalized scholarship recommendations.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
