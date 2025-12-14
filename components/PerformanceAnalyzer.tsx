@@ -11,19 +11,16 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { motion } from "framer-motion";
-import Speedometer from "@/components/Speedometer"; // <-- ADD THIS
+import Speedometer from "@/components/Speedometer";
 
-// MAKAUT credit structure (Sem 1–8)
 const SEM_CREDITS = [20, 20, 25, 25, 25, 25, 25, 25];
 
 export default function PerformanceAnalyzer() {
   const [sgpa, setSgpa] = useState<string[]>(Array(8).fill(""));
   const [isDark, setIsDark] = useState(false);
 
-  // -------- Load SGPA from localStorage on mount --------
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem("sgpa_values");
+    const saved = localStorage.getItem("sgpa_values");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -34,224 +31,207 @@ export default function PerformanceAnalyzer() {
     }
   }, []);
 
-  // -------- Save SGPA to localStorage --------
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("sgpa_values", JSON.stringify(sgpa));
+    localStorage.setItem("sgpa_values", JSON.stringify(sgpa));
   }, [sgpa]);
 
-  const handleInputChange = (index: number, value: string) => {
+  const handleInputChange = (i: number, v: string) => {
     const updated = [...sgpa];
-    updated[index] = value;
+    updated[i] = v;
     setSgpa(updated);
   };
 
   const sg = sgpa.map((v) => Number(v) || 0);
 
-  // -------- DGPA --------
+ 
   const calcDGPA = () => {
-    let totalCredits = 0;
-    let weightedSum = 0;
+    let credits = 0;
+    let sum = 0;
 
-    sg.forEach((value, i) => {
-      if (value > 0) {
-        totalCredits += SEM_CREDITS[i];
-        weightedSum += value * SEM_CREDITS[i];
+    sg.forEach((v, i) => {
+      if (v > 0) {
+        credits += SEM_CREDITS[i];
+        sum += v * SEM_CREDITS[i];
       }
     });
 
-    if (totalCredits === 0) return null;
-    return Number((weightedSum / totalCredits).toFixed(2));
+    return credits === 0 ? null : Number((sum / credits).toFixed(2));
   };
 
   const dgpa = calcDGPA();
 
-  // -------- Strongest & Weakest --------
+  
   const validSemesters = sg
-    .map((value, index) => ({ sem: index + 1, value }))
+    .map((v, i) => ({ sem: i + 1, value: v }))
     .filter((d) => d.value > 0);
 
-  const strongest =
-    validSemesters.length > 0
-      ? validSemesters.reduce((max, curr) =>
-          curr.value > max.value ? curr : max
-        )
-      : null;
+  const allSemestersCompleted = validSemesters.length === 8;
 
-  const weakest =
-    validSemesters.length > 0
-      ? validSemesters.reduce((min, curr) =>
-          curr.value < min.value ? curr : min
-        )
-      : null;
+  const predictNextSGPA = () => {
+    if (validSemesters.length < 2) return null;
 
-  // Chart Data
-  const chartData = sg.map((value, index) => ({
-    sem: `S${index + 1}`,
-    sgpa: value > 0 ? value : null,
+    const lastSem = validSemesters.at(-1)!.sem;
+    if (lastSem >= 8) return null;
+
+    const deltas: number[] = [];
+    for (let i = 1; i < validSemesters.length; i++) {
+      deltas.push(
+        validSemesters[i].value - validSemesters[i - 1].value
+      );
+    }
+
+    const avgDelta =
+      deltas.reduce((a, b) => a + b, 0) / deltas.length;
+
+    const predicted =
+      validSemesters.at(-1)!.value + avgDelta;
+
+    return Math.min(10, Math.max(0, Number(predicted.toFixed(2))));
+  };
+
+  const trendPrediction = predictNextSGPA();
+
+  const chartData = sg.map((v, i) => ({
+    sem: `S${i + 1}`,
+    sgpa: v > 0 ? v : null,
   }));
 
-  const containerClasses = isDark
-    ? "space-y-8 bg-slate-900 text-slate-100 p-4 rounded-xl"
-    : "space-y-8";
+  if (trendPrediction && !allSemestersCompleted) {
+    chartData.push({
+      sem: `S${validSemesters.at(-1)!.sem + 1}`,
+      sgpa: trendPrediction,
+    });
+  }
 
+  
   return (
-    <div className={containerClasses}>
+    <div
+      className={`max-w-6xl mx-auto border-2 rounded-2xl p-6 space-y-8 ${
+        isDark
+          ? "bg-slate-900 text-slate-100 border-slate-700"
+          : "bg-slate-50 border-slate-300"
+      }`}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-bold">Performance Dashboard</h2>
-
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-extrabold">
+          🎓 Performance Dashboard
+        </h2>
         <button
-          type="button"
           onClick={() => setIsDark((d) => !d)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border ${
-            isDark
-              ? "bg-slate-800 border-slate-600"
-              : "bg-slate-100 border-slate-300"
-          }`}
+          className="px-4 py-1.5 text-xs rounded-full border"
         >
-          <span>{isDark ? "Dark mode" : "Light mode"}</span>
+          {isDark ? "Dark" : "Light"} mode
         </button>
       </div>
 
-      {/* SGPA Input Grid */}
-      <motion.div
-        className="grid grid-cols-2 sm:grid-cols-4 gap-4"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        {sgpa.map((value, index) => (
+      {/* SGPA Inputs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {sgpa.map((v, i) => (
           <div
-            key={index}
-            className={`rounded-xl p-4 shadow-md border text-sm ${
-              isDark ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
-            }`}
+            key={i}
+            className="p-4 rounded-xl border bg-white"
           >
-            <label className="block font-semibold mb-1">
-              Semester {index + 1}
+            <label className="text-sm font-semibold">
+              Semester {i + 1}
             </label>
             <input
               type="number"
               min="0"
               max="10"
               step="0.01"
-              value={value}
-              onChange={(e) => handleInputChange(index, e.target.value)}
-              className={`w-full border rounded-md p-2 text-sm ${
-                isDark ? "bg-slate-900 border-slate-600" : "bg-white border-gray-300"
-              }`}
+              value={v}
+              onChange={(e) =>
+                handleInputChange(i, e.target.value)
+              }
+              className="w-full border p-2 rounded mt-2"
               placeholder="Enter SGPA"
             />
           </div>
         ))}
-      </motion.div>
+      </div>
 
-      {/* SGPA Trend Chart */}
-      <motion.div
-        className={`rounded-xl shadow-md border p-6 ${
-          isDark ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
-        }`}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-      >
-        <h3 className="text-sm font-semibold mb-4">📈 SGPA Trend</h3>
-        <div className="w-full h-72">
-          <ResponsiveContainer width="100%" height="100%">
+      {/* Chart */}
+      <div className="p-6 rounded-xl border bg-white">
+        <h3 className="font-semibold mb-4">📊 SGPA Trend</h3>
+        <div className="h-72">
+          <ResponsiveContainer>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <defs>
+                <linearGradient
+                  id="lineGradient"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop offset="0%" stopColor="#6366f1" />
+                  <stop offset="100%" stopColor="#22d3ee" />
+                </linearGradient>
+              </defs>
+
+              <CartesianGrid
+                strokeDasharray="4 4"
+                opacity={0.3}
+              />
               <XAxis dataKey="sem" />
               <YAxis domain={[0, 10]} />
               <Tooltip />
               <Line
-                type="monotone"
                 dataKey="sgpa"
-                stroke="#6366f1"
-                strokeWidth={3}
-                dot={{ r: 5, fill: "#6366f1" }}
+                type="monotone"
+                stroke="url(#lineGradient)"
+                strokeWidth={4}
+                dot={{ r: 6 }}
+                activeDot={{ r: 8 }}
                 connectNulls
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </motion.div>
+      </div>
 
-      {/* ⭐ NEW: Speedometer Block */}
-      <motion.div
-        className={`rounded-xl shadow-md border p-6 ${
-          isDark ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
-        }`}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-      >
-        <h3 className="text-sm font-semibold mb-4">⏱ Semester Progress Speedometer</h3>
+      {/* Speedometer */}
+      <div className="p-6 rounded-xl border bg-white">
+        <h3 className="font-semibold mb-3">
+          ⏱ Next Semester Prediction
+        </h3>
 
-        {validSemesters.length >= 2 ? (
+        {!allSemestersCompleted && trendPrediction ? (
           <>
-            <Speedometer value={validSemesters.at(-1)!.value} />
-
-            <p className="text-xs mt-3 opacity-80">
-              Previous: {validSemesters.at(-2)!.value}  
-              <br />
-              Current: {validSemesters.at(-1)!.value}
-            </p>
-
-            <p className="text-sm mt-2 font-bold">
-              {(() => {
-                const prev = validSemesters.at(-2)!.value;
-                const curr = validSemesters.at(-1)!.value;
-                const diff = ((curr - prev) / prev) * 100;
-
-                return diff >= 0
-                  ? `📈 Improved by ${diff.toFixed(2)}%`
-                  : `📉 Dropped by ${Math.abs(diff).toFixed(2)}%`;
-              })()}
+            <Speedometer value={trendPrediction} />
+            <p className="mt-3 font-bold text-sm">
+              📈 Predicted SGPA for Semester{" "}
+              {validSemesters.at(-1)!.sem + 1}:{" "}
+              {trendPrediction}
             </p>
           </>
         ) : (
-          <p className="text-xs opacity-80">
-            Enter at least 2 SGPA values to view progression.
+          <p className="text-xs opacity-70">
+            {allSemestersCompleted
+              ? "Semester 8 completed — prediction stopped."
+              : "Enter at least 2 semesters to see prediction."}
           </p>
         )}
-      </motion.div>
+      </div>
 
-      {/* DGPA + Strongest + Weakest */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* DGPA Card */}
-        <motion.div
-          className="rounded-xl shadow-md border p-6 bg-indigo-50"
-        >
-          <h2 className="text-sm font-semibold">🎓 DGPA</h2>
-          <p className="text-4xl font-extrabold mt-3">{dgpa ?? "-"}</p>
-        </motion.div>
+      {/* DGPA */}
+      <div className="p-6 rounded-xl border bg-indigo-100">
+        <h3 className="font-semibold">🎓 Final DGPA</h3>
 
-        {/* Strongest */}
-        <motion.div className="rounded-xl shadow-md border p-6 bg-green-50">
-          <h2 className="text-sm font-semibold text-green-700">🟢 Strongest</h2>
-          {strongest ? (
-            <p className="text-2xl font-bold mt-3">
-              S{strongest.sem} — {strongest.value}
-            </p>
-          ) : (
-            <p className="text-xs opacity-80">Enter SGPA values.</p>
-          )}
-        </motion.div>
-
-        {/* Weakest */}
-        <motion.div className="rounded-xl shadow-md border p-6 bg-red-50">
-          <h2 className="text-sm font-semibold text-red-700">🔴 Weakest</h2>
-          {weakest ? (
-            <p className="text-2xl font-bold mt-3">
-              S{weakest.sem} — {weakest.value}
-            </p>
-          ) : (
-            <p className="text-xs opacity-80">Enter SGPA values.</p>
-          )}
-        </motion.div>
-
+        {allSemestersCompleted ? (
+          <motion.p
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-4xl font-extrabold mt-2"
+          >
+            {dgpa}
+          </motion.p>
+        ) : (
+          <p className="text-xs opacity-70 mt-2">
+            Enter SGPA for all 8 semesters to view final DGPA.
+          </p>
+        )}
       </div>
     </div>
   );
