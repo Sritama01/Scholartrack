@@ -18,6 +18,37 @@ const SEM_CREDITS = [20, 20, 25, 25, 25, 25, 25, 25];
 export default function PerformanceAnalyzer() {
   const [sgpa, setSgpa] = useState<string[]>(Array(8).fill(""));
   const [isDark, setIsDark] = useState(false);
+  const [aiPrediction, setAiPrediction] = useState<number | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  const getAIPrediction = async () => {
+    if (validSemesters.length < 3) {
+      setAiPrediction(null);
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const lastThree = validSemesters.slice(-3).map(s => s.value);
+
+      const response = await fetch('http://127.0.0.1:5000/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prev3: lastThree[0],
+          prev2: lastThree[1],
+          prev1: lastThree[2],
+        }),
+      });
+
+      const data = await response.json();
+      setAiPrediction(data.predicted_sgpa);
+    } catch (error) {
+      console.error("AI Server offline:", error);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem("sgpa_values");
@@ -33,6 +64,10 @@ export default function PerformanceAnalyzer() {
 
   useEffect(() => {
     localStorage.setItem("sgpa_values", JSON.stringify(sgpa));
+  }, [sgpa]);
+
+  useEffect(() => {
+    getAIPrediction();
   }, [sgpa]);
 
   const handleInputChange = (i: number, v: string) => {
@@ -192,25 +227,29 @@ export default function PerformanceAnalyzer() {
       </div>
 
       {/* Speedometer */}
-      <div className="p-6 rounded-xl border bg-white">
-        <h3 className="font-semibold mb-3">
-          ⏱ Next Semester Prediction
-        </h3>
+      <div className="p-6 rounded-xl border bg-white shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-semibold text-indigo-900">
+            🤖 AI Trend Forecast
+          </h3>
+          {isAiLoading && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full animate-pulse">AI ANALYZING</span>}
+        </div>
 
-        {!allSemestersCompleted && trendPrediction ? (
+        {aiPrediction ? (
           <>
-            <Speedometer value={trendPrediction} />
-            <p className="mt-3 font-bold text-sm">
-              📈 Predicted SGPA for Semester{" "}
-              {validSemesters.at(-1)!.sem + 1}:{" "}
-              {trendPrediction}
-            </p>
+            <Speedometer value={aiPrediction} />
+            <div className="mt-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+              <p className="text-xs text-indigo-500 font-bold uppercase tracking-tight">Predicted by Scholartrack AI</p>
+              <p className="text-2xl font-black text-indigo-900">
+                SGPA: {aiPrediction}
+              </p>
+            </div>
           </>
         ) : (
-          <p className="text-xs opacity-70">
-            {allSemestersCompleted
-              ? "Semester 8 completed — prediction stopped."
-              : "Enter at least 2 semesters to see prediction."}
+          <p className="text-xs opacity-70 italic text-center py-10">
+            {validSemesters.length < 3
+              ? "Enter at least 3 semesters to unlock AI analysis."
+              : "Waiting for AI calculation..."}
           </p>
         )}
       </div>
