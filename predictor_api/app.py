@@ -17,5 +17,5 @@ def predict():
     prediction = model.predict(input_df)[0]
     return jsonify({"predicted_sgpa": round(prediction, 2)})
 
-if __name__ == '__main__':
-    app.run(port=5000)
+#if __name__ == '__main__':
+#   app.run(port=5000)
