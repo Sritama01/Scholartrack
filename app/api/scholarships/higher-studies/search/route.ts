@@ -1,78 +1,53 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+// Initialize the Gemini API safely
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "");
 
 export async function POST(req: Request) {
   try {
     const { dgpa } = await req.json();
 
-    // Safety check
     if (!dgpa || typeof dgpa !== "number") {
       return NextResponse.json({ results: [] });
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a backend API. You MUST return ONLY valid JSON. No explanations. No markdown.",
-        },
-        {
-          role: "user",
-          content: `
-DGPA: ${dgpa}
-
-Rules:
-- If DGPA < 7.7 → Not eligible for abroad
-- If DGPA < 8.0 → Not eligible for India
-- Student is a B.Tech graduate
-- Suggest higher studies options
-- Give eligibility percentage (0–100)
-- Recommend universities
-- Exactly ONE option must have "bestMatch": true
-
-Return ONLY a JSON array like this:
-[
-  {
-    "type": "MS Abroad",
-    "eligibility": 85,
-    "bestMatch": true,
-    "reason": "Strong academic profile",
-    "institutes": ["TU Munich", "RWTH Aachen"]
-  }
-]
-`,
-        },
-      ],
+    // Use the 1.5 Flash model
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json", // Forces JSON output
+      }
     });
 
-    // Extract raw content
-    const raw = completion.choices[0].message.content || "[]";
+    const prompt = `
+      DGPA Score: ${dgpa}
+      Student Profile: B.Tech Graduate.
+      
+      Rules:
+      - If DGPA < 7.7 → Not eligible for abroad
+      - If DGPA < 8.0 → Not eligible for India
+      - Suggest higher studies options
+      - Give eligibility percentage (0–100)
+      - Recommend specific universities
+      - Exactly ONE option must have "bestMatch": true
 
-    const start = raw.indexOf("[");
-    const end = raw.lastIndexOf("]") + 1;
+      Return a JSON array of objects with these keys: 
+      "type" (string), "eligibility" (number), "bestMatch" (boolean), "reason" (string), "institutes" (string array).
+    `;
 
-    if (start === -1 || end === -1) {
-      return NextResponse.json({ results: [] });
-    }
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
-    const cleanJson = raw.slice(start, end);
-    
-    // FIX: Declare the 'results' variable here so it can be used below
-    const results = JSON.parse(cleanJson);
+    // Parse the JSON result from Gemini
+    const results = JSON.parse(text);
 
-    // Now this console log will work because 'results' is defined in this scope
-    console.log("🔵 API SEARCH RESULTS:", results);
-
+    console.log("🟢 GEMINI RESULTS:", results);
     return NextResponse.json({ results });
+
   } catch (error) {
-    console.error("Higher studies API error:", error);
+    console.error("Gemini API error:", error);
     return NextResponse.json({ results: [] });
   }
 }
