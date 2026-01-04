@@ -36,7 +36,7 @@ export default function PerformanceAnalyzer({ onDgpaCalculated }: Props) {
     try {
       const lastThree = validSemesters.slice(-3).map(s => s.value);
 
-      const response = await fetch('http://127.0.0.1:5000/predict', {
+      const response = await fetch('https://analyzer-ency.onrender.com/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
