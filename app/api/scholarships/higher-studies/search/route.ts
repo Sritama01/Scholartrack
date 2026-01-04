@@ -1,20 +1,17 @@
-console.log("🔵 FRONTEND RESULTS:", results)
-
-
-import { NextResponse } from "next/server"
-import OpenAI from "openai"
+import { NextResponse } from "next/server";
+import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-})
+});
 
 export async function POST(req: Request) {
   try {
-    const { dgpa } = await req.json()
+    const { dgpa } = await req.json();
 
     // Safety check
     if (!dgpa || typeof dgpa !== "number") {
-      return NextResponse.json({ results: [] })
+      return NextResponse.json({ results: [] });
     }
 
     const completion = await openai.chat.completions.create({
@@ -53,24 +50,29 @@ Return ONLY a JSON array like this:
 `,
         },
       ],
-    })
+    });
 
-    // 🔥 HARD JSON CLEANING (THIS FIXES YOUR ISSUE)
-    const raw = completion.choices[0].message.content || "[]"
+    // Extract raw content
+    const raw = completion.choices[0].message.content || "[]";
 
-    const start = raw.indexOf("[")
-    const end = raw.lastIndexOf("]") + 1
+    const start = raw.indexOf("[");
+    const end = raw.lastIndexOf("]") + 1;
 
     if (start === -1 || end === -1) {
-      return NextResponse.json({ results: [] })
+      return NextResponse.json({ results: [] });
     }
 
-    const cleanJson = raw.slice(start, end)
-    const parsed = JSON.parse(cleanJson)
+    const cleanJson = raw.slice(start, end);
+    
+    // FIX: Declare the 'results' variable here so it can be used below
+    const results = JSON.parse(cleanJson);
 
-    return NextResponse.json({ results: parsed })
+    // Now this console log will work because 'results' is defined in this scope
+    console.log("🔵 API SEARCH RESULTS:", results);
+
+    return NextResponse.json({ results });
   } catch (error) {
-    console.error("Higher studies API error:", error)
-    return NextResponse.json({ results: [] })
+    console.error("Higher studies API error:", error);
+    return NextResponse.json({ results: [] });
   }
 }
