@@ -13,12 +13,18 @@ import {
 import { motion } from "framer-motion";
 import Speedometer from "@/components/Speedometer";
 
+/* ================= STEP 3: PROPS ================= */
+type Props = {
+  onDgpaCalculated?: (dgpa: number) => void;
+};
+
 const SEM_CREDITS = [20, 20, 25, 25, 25, 25, 25, 25];
 
-export default function PerformanceAnalyzer() {
+export default function PerformanceAnalyzer({ onDgpaCalculated }: Props) {
   const [sgpa, setSgpa] = useState<string[]>(Array(8).fill(""));
   const [isDark, setIsDark] = useState(false);
 
+  /* ================= LOAD / SAVE ================= */
   useEffect(() => {
     const saved = localStorage.getItem("sgpa_values");
     if (saved) {
@@ -43,7 +49,7 @@ export default function PerformanceAnalyzer() {
 
   const sg = sgpa.map((v) => Number(v) || 0);
 
- 
+  /* ================= DGPA CALCULATION ================= */
   const calcDGPA = () => {
     let credits = 0;
     let sum = 0;
@@ -60,7 +66,14 @@ export default function PerformanceAnalyzer() {
 
   const dgpa = calcDGPA();
 
-  
+  /* ================= STEP 3: SEND DGPA ================= */
+  useEffect(() => {
+    if (dgpa !== null) {
+      onDgpaCalculated?.(dgpa);
+    }
+  }, [dgpa, onDgpaCalculated]);
+
+  /* ================= TREND ANALYSIS ================= */
   const validSemesters = sg
     .map((v, i) => ({ sem: i + 1, value: v }))
     .filter((d) => d.value > 0);
@@ -103,7 +116,7 @@ export default function PerformanceAnalyzer() {
     });
   }
 
-  
+  /* ================= UI ================= */
   return (
     <div
       className={`max-w-6xl mx-auto border-2 rounded-2xl p-6 space-y-8 ${
@@ -128,10 +141,7 @@ export default function PerformanceAnalyzer() {
       {/* SGPA Inputs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {sgpa.map((v, i) => (
-          <div
-            key={i}
-            className="p-4 rounded-xl border bg-white"
-          >
+          <div key={i} className="p-4 rounded-xl border bg-white">
             <label className="text-sm font-semibold">
               Semester {i + 1}
             </label>
@@ -157,30 +167,14 @@ export default function PerformanceAnalyzer() {
         <div className="h-72">
           <ResponsiveContainer>
             <LineChart data={chartData}>
-              <defs>
-                <linearGradient
-                  id="lineGradient"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#22d3ee" />
-                </linearGradient>
-              </defs>
-
-              <CartesianGrid
-                strokeDasharray="4 4"
-                opacity={0.3}
-              />
+              <CartesianGrid strokeDasharray="4 4" opacity={0.3} />
               <XAxis dataKey="sem" />
               <YAxis domain={[0, 10]} />
               <Tooltip />
               <Line
                 dataKey="sgpa"
                 type="monotone"
-                stroke="url(#lineGradient)"
+                stroke="#6366f1"
                 strokeWidth={4}
                 dot={{ r: 6 }}
                 activeDot={{ r: 8 }}
@@ -235,4 +229,10 @@ export default function PerformanceAnalyzer() {
       </div>
     </div>
   );
+  useEffect(() => {
+  if (dgpa !== null && onDgpaCalculated) {
+    onDgpaCalculated(dgpa)
+  }
+}, [dgpa, onDgpaCalculated])
+
 }

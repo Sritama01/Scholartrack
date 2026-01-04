@@ -12,6 +12,10 @@ import { Separator } from "@/components/ui/separator"
 import { GraduationCap, Calculator, Award, TrendingUp, Plus, Trash2 } from "lucide-react"
 import ScholarshipSearch from "../components/ScholarshipSearch.client"
 import PerformanceAnalyzer from "../components/PerformanceAnalyzer"
+import HigherStudiesSearch from "@/components/higher-studies/HigherStudiesSearch"
+import OpenAISearchResults from "@/components/higher-studies/OpenAISearchResults"
+
+
 
 
 
@@ -111,8 +115,10 @@ export default function StudentPortal() {
   const [selectedSemester, setSelectedSemester] = useState(1)
   const [computedSgpa, setComputedSgpa] = useState<Record<number, number>>({})
   const [manualSemesterSgpa, setManualSemesterSgpa] = useState<Record<number, string>>({})
-  const [lastCalculatedYGPA, setLastCalculatedYGPA] = useState<Record<number, number>>({})
   const [singleMarks, setSingleMarks] = useState<number | "">("")
+  const [dgpa, setDgpa] = useState<number | null>(null)
+  const [manualDgpa, setManualDgpa] = useState<number | "">("")
+
 
 
   function updateSubject(sem: number, id: string, field: keyof Subject, value: any) {
@@ -185,30 +191,40 @@ export default function StudentPortal() {
     return totalCredits === 0 ? 0 : Number((weighted / totalCredits).toFixed(2))
   }
 
-  function calculateYGPAForYear(year: number) {
-    if (year < 1 || year > 4) return null
-    const semA = (year - 1) * 2 + 1
-    const semB = semA + 1
-    const sgpaA =
-      computedSgpa[semA] ??
-      (manualSemesterSgpa[semA] ? Number(manualSemesterSgpa[semA]) : NaN)
-    const sgpaB =
-      computedSgpa[semB] ??
-      (manualSemesterSgpa[semB] ? Number(manualSemesterSgpa[semB]) : NaN)
-    const cA = SEMESTER_CREDITS[semA] ?? 0
-    const cB = SEMESTER_CREDITS[semB] ?? 0
-
-    if (Number.isNaN(sgpaA) || Number.isNaN(sgpaB) || cA + cB === 0) return null
-
-    const ygpa = Number(((sgpaA * cA + sgpaB * cB) / (cA + cB)).toFixed(2))
-    setLastCalculatedYGPA((prev) => ({ ...prev, [year]: ygpa }))
-    return ygpa
-  }
+  
 
   const currentCGPA = useMemo(
     () => calculateCGPA(),
     [computedSgpa, manualSemesterSgpa]
   )
+  /* ================= HIGHER STUDIES (DGPA BASED) ================= */
+const higherStudies = dgpa
+  ? [
+      {
+        name: "MS Abroad",
+        fit: Math.min(100, dgpa * 10 + 10),
+        reason: "Strong DGPA trend supports MS admissions",
+      },
+      {
+        name: "M.Tech (India)",
+        fit: Math.min(100, dgpa * 9),
+        reason: "DGPA meets IIT/NIT cutoffs",
+      },
+      {
+        name: "Research / PhD",
+        fit: Math.min(100, dgpa * 8 + 15),
+        reason: "Good consistency for research track",
+      },
+      {
+        name: "MBA",
+        fit: Math.min(100, dgpa * 6),
+        reason: "DGPA less important for MBA",
+      },
+    ].sort((a, b) => b.fit - a.fit)
+  : []
+
+  
+
 
   const singleGradeInfo =
     typeof singleMarks === "number"
@@ -232,25 +248,32 @@ export default function StudentPortal() {
         <Tabs defaultValue="grade-converter" className="space-y-6">
          
           <TabsList className="grid grid-cols-6 w-full">
-            <TabsTrigger value="grade-converter" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" /> Grade Converter
-            </TabsTrigger>
-            <TabsTrigger value="sgpa" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" /> SGPA
-            </TabsTrigger>
-            <TabsTrigger value="cgpa-calculator" className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4" /> CGPA
-            </TabsTrigger>
-            <TabsTrigger value="scholarships" className="flex items-center gap-2">
-              <Award className="h-4 w-4" /> Scholarships
-            </TabsTrigger>
-            <TabsTrigger value="ygpa" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" /> YGPA
-            </TabsTrigger>
-            <TabsTrigger value="analyzer" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" /> Analyzer
-            </TabsTrigger>
-          </TabsList>
+  <TabsTrigger value="grade-converter" className="flex items-center gap-2">
+    Grade Converter
+  </TabsTrigger>
+
+  <TabsTrigger value="sgpa" className="flex items-center gap-2">
+    SGPA
+  </TabsTrigger>
+
+  <TabsTrigger value="cgpa-calculator" className="flex items-center gap-2">
+    CGPA
+  </TabsTrigger>
+
+  <TabsTrigger value="scholarships" className="flex items-center gap-2">
+    Scholarships
+  </TabsTrigger>
+
+  <TabsTrigger value="analyzer" className="flex items-center gap-2">
+    Analyzer
+  </TabsTrigger>
+
+
+  <TabsTrigger value="higher-studies" className="flex items-center gap-2">
+    🎓 Higher Studies
+  </TabsTrigger>
+</TabsList>
+
 
         
           <TabsContent value="grade-converter">
@@ -631,110 +654,129 @@ export default function StudentPortal() {
           </TabsContent>
 
          
-          <TabsContent value="ygpa">
-            <Card>
-              <CardHeader>
-                <CardTitle>YGPA Calculator (MAKAUT)</CardTitle>
-                <CardDescription>
-                  Yearly GPA computed using the two semester SGPAs and MAKAUT semester
-                  credits
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-6">
-                <p className="text-sm text-gray-600">
-                  Enter or compute SGPAs for semesters; then pick a year to compute YGPA.
-                </p>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {Array.from({ length: 8 }, (_, i) => {
-                    const sem = i + 1
-                    return (
-                      <div key={sem} className="p-3 border rounded">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="text-sm font-medium">Semester {sem}</div>
-                          <div className="text-xs text-gray-500">
-                            Credits: {SEMESTER_CREDITS[sem]}
-                          </div>
-                        </div>
-
-                        <Input
-                          placeholder={`Computed SGPA: ${computedSgpa[sem] ?? "-"}`}
-                          value={manualSemesterSgpa[sem] ?? ""}
-                          onChange={(e) =>
-                            setManualSemesterSgpa((p) => ({
-                              ...p,
-                              [sem]: e.target.value,
-                            }))
-                          }
-                        />
-                        <div className="mt-2 text-xs text-gray-500">
-                          Computed: {computedSgpa[sem] ?? "-"}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                <div className="flex gap-3 mt-4 flex-wrap">
-                  <Button onClick={() => calculateYGPAForYear(1)}>
-                    Calculate YGPA (1st Year)
-                  </Button>
-                  <Button onClick={() => calculateYGPAForYear(2)}>
-                    Calculate YGPA (2nd Year)
-                  </Button>
-                  <Button onClick={() => calculateYGPAForYear(3)}>
-                    Calculate YGPA (3rd Year)
-                  </Button>
-                  <Button onClick={() => calculateYGPAForYear(4)}>
-                    Calculate YGPA (4th Year)
-                  </Button>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                  {Object.entries(lastCalculatedYGPA).length === 0 ? (
-                    <div className="text-sm text-gray-600">
-                      No YGPA calculated yet — calculate using the buttons above after SGPAs
-                      are available.
-                    </div>
-                  ) : (
-                    Object.entries(lastCalculatedYGPA).map(([year, val]) => (
-                      <div
-                        key={year}
-                        className="p-4 rounded bg-emerald-50 border border-emerald-200"
-                      >
-                        <div className="text-sm text-gray-700">Year {year} YGPA</div>
-                        <div className="text-2xl font-bold text-emerald-700">
-                          {val}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Equivalent %: {gpaToPercentage(val)} %
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
+          
           
           <TabsContent value="analyzer">
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Analyzer</CardTitle>
-                <CardDescription>
-                  Enter SGPA values to visualize trend & prediction
-                </CardDescription>
-              </CardHeader>
+  <Card>
+    <CardHeader>
+      <CardTitle>Performance Analyzer</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <PerformanceAnalyzer onDgpaCalculated={setDgpa} />
+    </CardContent>
+  </Card>
+</TabsContent>
 
-              <CardContent>
-                <PerformanceAnalyzer />
-              </CardContent>
-            </Card>
-          </TabsContent>
+<TabsContent value="higher-studies">
+  <Card>
+    <CardHeader>
+      <CardTitle>🎓 Higher Studies Advisor</CardTitle>
+      <CardDescription>
+        Higher Studies Advisor
+      </CardDescription>
+    </CardHeader>
+
+    <CardContent className="space-y-6">
+      {/* DGPA INPUT */}
+      <div className="space-y-2 max-w-sm">
+        <Label>Enter your DGPA (0 – 10)</Label>
+        <Input
+          type="number"
+          step="0.01"
+          min={0}
+          max={10}
+          placeholder="e.g. 8.25"
+          value={manualDgpa}
+          onChange={(e) =>
+            setManualDgpa(
+              e.target.value === "" ? "" : Number(e.target.value)
+            )
+          }
+        />
+      </div>
+
+      {/* VALIDATION */}
+      {manualDgpa === "" && (
+        <p className="text-sm text-gray-600">
+          Please enter DGPA to see recommendations.
+        </p>
+      )}
+      
+      
+      {/* 🔍 OpenAI Search Results */}
+{typeof manualDgpa === "number" && manualDgpa >= 7.0 && (
+  <OpenAISearchResults dgpa={manualDgpa} />
+)}
+
+
+      {/* RESULTS */}
+      {typeof manualDgpa === "number" && manualDgpa >= 7.0 && (
+        <div className="space-y-4">
+
+          {/* INDIA */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                🇮🇳 Higher Studies in India
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {manualDgpa >= 8.0 ? (
+                <>
+                  <p className="font-semibold text-green-700">
+                    ✅ Eligible — {Math.round(manualDgpa * 10)}%
+                  </p>
+                  <ul className="list-disc ml-5 text-sm mt-2">
+                    <li>IITs (Mid / New)</li>
+                    <li>NITs</li>
+                    <li>Top State Universities</li>
+                  </ul>
+                </>
+              ) : (
+                <p className="text-red-600 text-sm">
+                  ❌ Minimum DGPA 8.0 required for India
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ABROAD */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                🌍 Higher Studies Abroad
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {manualDgpa >= 7.7 ? (
+                <>
+                  <p className="font-semibold text-green-700">
+                    ✅ Eligible — {Math.round(manualDgpa * 10)}%
+                  </p>
+                  <ul className="list-disc ml-5 text-sm mt-2">
+                    <li>Germany (TU9, Applied Universities)</li>
+                    <li>Canada (Public Universities)</li>
+                    <li>UK (Mid-tier Universities)</li>
+                  </ul>
+                </>
+              ) : (
+                <p className="text-red-600 text-sm">
+                  ❌ Minimum DGPA 7.7 required for Abroad
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+        </div>
+      )}
+    </CardContent>
+  </Card>
+</TabsContent>
+
+
         </Tabs>
       </main>
     </div>
   )
 }
+
